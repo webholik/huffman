@@ -3,7 +3,7 @@
 #include <string.h>
 #define TYPE_LEAF 0
 #define TYPE_BRANCH 1
-#define END_MARKER (char)255
+//
 
 
 //Main struct that will hold each element of the tree
@@ -29,7 +29,7 @@ struct code_cc{
 };
 
 // Wrapper to hold the list of codes, along with the
-// original frequency list (needed while write the
+// original frequency list (needed while writing the
 // compressed ouput)
 struct code_list{
   struct code_cc *codes[256];
@@ -86,7 +86,8 @@ void gen_code(node root, struct code_cc *codes[], int *size, char _code[], int l
     gen_code(root->right,codes,size,code,len);
   }
   else{
-    printf("Something went wrong\n");
+    printf("root->type unknown. "
+	   "Probably a memory corruption somewhere\n");
     exit(1);
   }
 }
@@ -233,30 +234,22 @@ void display_codes(struct code_list codes){
 
 void write_code(FILE *f, struct code_list codes, char str[]){
 
-  display_codes(codes);
+  //display_codes(codes);
   
   fputc(codes.freq_list.size, f);
   int i;
   for(i=0; i<codes.freq_list.size; i++){
-    /*fprintf(f, "%c%4.4d",
-	    codes.freq_list.arr[i]->ch,
-	    codes.freq_list.arr[i]->weight);
-    */
     fputc( codes.freq_list.arr[i]->ch,f);
     fwrite(&codes.freq_list.arr[i]->weight, sizeof(int), 1, f);
   }
-  //fprintf(f,"E");
-  //fprintf(f,"%ld",strlen(str));
   long int len = strlen(str);
   fwrite(&len, sizeof(long int), 1, f);
-  //fprintf(f,"E");
   /*
     for (i=0; str[i] != '\0'; i++){
     fprintf(f, "%s", get_code(&codes, str[i]));
     }
   */
 
-  //int len = strlen(str);
   i = 0;
   int pos = 0;
   while(i<len){
@@ -267,14 +260,11 @@ void write_code(FILE *f, struct code_list codes, char str[]){
       if(bit != (char)0 && bit != (char)1){
 	break;
       }
-      //printf("Entering bit %d\n", bit);
       out = out << 1;
       out = out | bit;
-      //printf("Out is now %d\n", out);
     }
     out = out << (8-j);
 
-    //printf("Entering byte %d\n", out);
     fputc(out,f);
     
       
@@ -286,14 +276,12 @@ char* read_code(FILE *f){
   long int size_of_file = ftell(f);
   fseek(f, 0, SEEK_SET);
   int i = (int)fgetc(f);
-  printf("Number of items: %d\n", i);
   int j;
   int weight;
   char ch;
   struct p_list list;
   list.size = i;
   for(j=0; j<i; j++){
-    //fscanf(f, "%c%4d",&ch,&weight);
     ch = fgetc(f);
     fread(&weight, sizeof(int), 1, f);
     node x = new_node(ch, weight, TYPE_LEAF);
@@ -301,14 +289,14 @@ char* read_code(FILE *f){
   }
 
   sort(&list);
+
+  /* Print the read codes
   struct code_list codes = encode(list);
   display_codes(codes);
+  */
 
-  //fscanf(f,"E");
   long int length;
-  //fscanf(f,"%ld", &length);
   fread(&length, sizeof(long int), 1, f);
-  //fscanf(f,"E");
 
 
   char *out = malloc(length+200);
@@ -316,8 +304,7 @@ char* read_code(FILE *f){
   node _root = create_tree(list);
   node root = _root;
   struct input_buffer input = {7,'\0',0};
-  while(size<=length){
-    //printf("Reading bit - %c\n", ch);
+  while(size<length){
     ch = next_bit(f, &input, size_of_file);
     if(ch == '0'){
       root = root->left;
@@ -349,7 +336,6 @@ char *get_string(FILE *f){
   fseek(f, 0, SEEK_SET);
   char *out = malloc(size+3);
   fread(out, 1, size, f);
-  //out[size] = (char)EOF;
   out[size] = '\0';
   return out;
 }
