@@ -14,24 +14,10 @@ char *gen_out_filename(char input[], int opt){
   long int size = strlen(input);
   char *out = malloc(size + 12);
   strcpy(out, input);
-  out[size] = '.';
-  if(opt == 1){
-    out[size+1] = 'c';
-    out[size+2] = 'o';
-    out[size+3] = 'm';
-    out[size+4] = 'p';
-    out[size+5] = '\0';
-  }
-  else{
-    out[size+1] = 'd';
-    out[size+2] = 'e';
-    out[size+3] = 'c';
-    out[size+4] = 'o';
-    out[size+5] = 'm';
-    out[size+6] = 'p';
-    out[size+7] = '\0';
-
-  }
+  if(opt == 1)
+    strcpy(out+size, ".comp");
+  else
+    strcpy(out+size, ".decomp");
 
   return out;
 }
@@ -44,6 +30,7 @@ int main(int argc, char *argv[]){
   }
 
   int opt;
+
   if(strcmp("compress", argv[1]) == 0){
     opt = 1;
   }
@@ -56,6 +43,7 @@ int main(int argc, char *argv[]){
   }
 
   char *out_file_name;
+
   if(argc == 3){
     out_file_name = gen_out_filename(argv[2],opt);
   }
@@ -73,17 +61,14 @@ int main(int argc, char *argv[]){
 
     struct p_list list = create_nodes(str);
     codes = encode(list);
-    //printf("Encoded\n");
-    //display_codes(codes);
     FILE *out = fopen(out_file_name, "w");
-    write_code(out, codes,str);
+    write_code(out, codes, str);
     fclose(out);
   }
   else{
     char *out_str;
-
-
     FILE *input = fopen(argv[2], "r");
+
     out_str = read_code(input);
     fclose(input);
 
@@ -94,9 +79,5 @@ int main(int argc, char *argv[]){
     }
     fclose(out);
 
-    /*
-      printf("Regenerating code:\n\n");
-      printf("%s\n", out_str);
-    */
   }
 }

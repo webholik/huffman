@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "huffman.h"
 
 
@@ -121,127 +122,76 @@ char* get_code(code_list list, char ch){
 }
 
 
-int get_bit(char str[], int *i, code_list codes, int *pos){
-  char *code = get_code(codes, str[*i]);
-  if(*pos == (int)strlen(code)){
-    *pos = 0;
-    *i = *i + 1;
-    if(str[*i] == '\0'){
-      return 2;
-    }
-    else{
-      code = get_code(codes, str[*i]);
-    }
-  }
-
-  unsigned char out = code[*pos];
-  *pos = *pos + 1;
-  return out;
-}
-
-unsigned char next_bit(FILE *f, struct input_buffer *input,
-		       long int length){
-  if(input->ch == '\0' || input->pos == -1){
-    input->bytes_read++;
-    input->pos = 7;
-
-    if(ftell(f) == length){
-      return EOF;
-    }
-
-    input->ch = fgetc(f);
-  }
-
-  char out;
-  if((input->ch & (1 << input->pos)) != 0){
-    out = '1';
-  }
-  else{
-    out = '0';
-  }
-
-  input->pos -= 1;
-  //printf("Giving out bit - %c\n", out);
-  return out;
-}
-
 
 void display_codes(code_list list){
   int i;
-  for(i=0; i<list->size; i++){
+  for(i = 0; i < list->size; i++){
     printf("%c -> %s\n", list->ch[i], list->code[i]);
   }
 }
 
 
-// OUTPUT FORMAT
-// -------------
-// 1st byte - Number(n) of char-code pairs
-// Followed by the n char code pairs
-// Size of the uncomressed file - 8 bytes
 
-// TODO - Use a end-of-file marker to signify end of compressed output
-// ----
+
+uint8_t get_bit(char *code, int pos){
+  if(code[pos] != '\0')
+    return code[pos] - '0';
+  else
+    return 2;
+}
 
 void write_code(FILE *f, code_list list, char str[]){
 
-  //display_codes(codes);
   fputc(list->freq_list.size, f);
   int i;
-  for(i=0; i<list->freq_list.size; i++){
-    fputc( list->freq_list.arr[i]->ch,f);
+  for(i=0; i < list->freq_list.size; i++){
+    fputc( list->freq_list.arr[i]->ch, f);
     fwrite(&list->freq_list.arr[i]->weight, sizeof(int), 1, f);
   }
   long int len = strlen(str);
   fwrite(&len, sizeof(long int), 1, f);
-  /*
-    for (i=0; str[i] != '\0'; i++){
-    fprintf(f, "%s", get_code(&codes, str[i]));
-    }
-  */
 
   i = 0;
-  int pos = 0;
+  int bit_pos=0;
+  unsigned char out = (char)0;
   while(i<len){
-    unsigned char out = (char) 0;
-    int j;
-    for(j=0; j<8; j++){
-      unsigned char bit = (char)(get_bit(str, &i, list, &pos) - 48); 
-      if(bit != (char)0 && bit != (char)1){
-	break;
-      }
-      out = out << 1;
-      out = out | bit;
-    }
-    out = out << (8-j);
+    uint8_t bit;
+    char *code = get_code(list, str[i]);
+    int pos = 0;
 
+    while((bit = get_bit(code, pos++)) != 2){
+      out <<= 1;
+      out |= bit;
+      if(++bit_pos == 8){
+        fputc(out, f);
+        bit_pos = 0;
+        out = (char)0;
+      }
+    }
+    i++;
+  }
+  if(bit_pos != 0){
+    out <<= (8-bit_pos);
     fputc(out,f);
   }
 }
 
-char* read_code(FILE *f){
+char *read_code(FILE *f){
   fseek(f, 0, SEEK_END);
-  long int size_of_file = ftell(f);
   fseek(f, 0, SEEK_SET);
   int i = (int)fgetc(f);
   int j;
-  int weight;
-  char ch;
   struct p_list list;
   list.size = i;
   for(j=0; j<i; j++){
-    ch = fgetc(f);
+    int weight;
+    char ch = fgetc(f);
     fread(&weight, sizeof(int), 1, f);
     node x = new_node(ch, weight, TYPE_LEAF);
     list.arr[j] = x;
   }
 
   sort(&list);
-
-  /* Print the read codes
-  struct code_list codes = encode(list);
-  display_codes(codes);
-  */
 
   long int length;
   fread(&length, sizeof(long int), 1, f);
@@ -250,31 +200,30 @@ char* read_code(FILE *f){
   char *out = malloc(length+200);
   long int size = 0;
   node _root = create_tree(list);
-  node root = _root;
-  struct input_buffer input = {7,'\0',0};
+  int pos = -1;
+  unsigned char c;
   while(size<length){
-    ch = next_bit(f, &input, size_of_file);
-    if(ch == '0'){
-      root = root->left;
-    }
-    else if(ch == '1'){
-      root = root->right;
-    }
-    else{
-      break;
-    }
-    if(root->type == TYPE_LEAF){
-      /*
-      if(root->ch == END_MARKER){
-	break;
+    node root = _root;
+
+    while(root->type != TYPE_LEAF){
+      if(pos == -1){
+        pos = 7;
+        c = fgetc(f);
       }
-      */
-      out[size] = root->ch;
-      size++;
-      root = _root;
+      int bit = c & (1 << pos);
+      if(bit == 0)
+        root = root->left;
+      else
+        root = root->right;
+
+      pos--;
+
     }
+
+    out[size++] = root->ch;
+
   }
+
   out[size] = '\0';
   return out;
 }
-
