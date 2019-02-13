@@ -22,20 +22,13 @@ struct p_list{
   int size;
 };
 
-// Generated codes after traversing the binary tree
-struct code_cc{
-  char ch;
-  char code[40];
-};
 
-// Wrapper to hold the list of codes, along with the
-// original frequency list (needed while writing the
-// compressed ouput)
-struct code_list{
-  struct code_cc *codes[256];
+typedef struct{
+  char ch[256];
+  char code[256][40];
   int size;
   struct p_list freq_list;
-};
+} *code_list;
 
 // Simple struct to hold the position of
 // last bit read
@@ -46,6 +39,6 @@ struct input_buffer{
 };
 
 struct p_list create_nodes(char[]);
-struct code_list encode(struct p_list);
-void write_code(FILE*, struct code_list, char[]);
+code_list encode(struct p_list);
+void write_code(FILE*, code_list, char[]);
 char* read_code(FILE*);

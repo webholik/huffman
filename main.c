@@ -69,7 +69,7 @@ int main(int argc, char *argv[]){
     char *str = get_string(input);
     fclose(input);
     //printf("%s\n", str);
-    struct code_list codes;
+    code_list codes;
 
     struct p_list list = create_nodes(str);
     codes = encode(list);

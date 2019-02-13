@@ -18,27 +18,25 @@ static void sort(struct p_list *list) {
 
 // Traverse the binary tree to generate Huffman codes
 // Uses recursion
-void gen_code(node root, struct code_cc *codes[], int *size, char _code[], int len){
+void gen_code(node root, code_list list, char _code[], int len){
   char code[40];
   _code[len] = '\0';
   strcpy(code,_code);
 
   if(root->type == TYPE_LEAF){
-    struct code_cc *c = malloc(sizeof(struct code_cc));
-    strcpy(c->code,code);
-    c->ch = root->ch;
-    codes[*size] = c;
-    (*size)++;
+    strcpy(list->code[list->size],code);
+    list->ch[list->size] = root->ch;
+    list->size++;
   }
   else if(root->type == TYPE_BRANCH){
     code[len] = '0';
     len = len + 1;
-    gen_code(root->left,codes,size,code,len);
+    gen_code(root->left, list, code, len);
 
-    len = len -1;
+    len = len - 1;
     code[len] = '1';
     len++;
-    gen_code(root->right,codes,size,code,len);
+    gen_code(root->right, list, code, len);
   }
   else{
     printf("root->type unknown. "
@@ -98,24 +96,24 @@ struct p_list create_nodes(char str[]){
 
 
 // Combine the above functions to generate Huffman codes
-struct code_list encode(struct p_list list){
+code_list encode(struct p_list list){
 
-  struct code_list codes;
-  codes.size = 0;
-  codes.freq_list = list;
+  code_list codes = malloc(sizeof(*codes));
+  codes->size = 0;
+  codes->freq_list = list;
   char cd[10];
-  gen_code(create_tree(list),codes.codes,&codes.size,cd,0);
+  gen_code(create_tree(list),codes,cd,0);
 
   return codes;
 
 }
 
 // Get the Huffman code for a given char
-char* get_code(struct code_list *codes, char ch){
+char* get_code(code_list list, char ch){
   int i;
-  for(i=0; i<codes->size; i++){
-    if(codes->codes[i]->ch == ch){
-      return codes->codes[i]->code;
+  for(i=0; i < list->size; i++){
+    if(list->ch[i] == ch){
+      return list->code[i];
     }
   }
 
@@ -123,7 +121,7 @@ char* get_code(struct code_list *codes, char ch){
 }
 
 
-int get_bit(char str[], int *i, struct code_list *codes, int *pos){
+int get_bit(char str[], int *i, code_list codes, int *pos){
   char *code = get_code(codes, str[*i]);
   if(*pos == (int)strlen(code)){
     *pos = 0;
@@ -168,10 +166,10 @@ unsigned char next_bit(FILE *f, struct input_buffer *input,
 }
 
 
-void display_codes(struct code_list codes){
+void display_codes(code_list list){
   int i;
-  for(i=0; i<codes.size; i++){
-    printf("%c -> %s\n", codes.codes[i]->ch, codes.codes[i]->code);
+  for(i=0; i<list->size; i++){
+    printf("%c -> %s\n", list->ch[i], list->code[i]);
   }
 }
 
@@ -185,14 +183,14 @@ void display_codes(struct code_list codes){
 // TODO - Use a end-of-file marker to signify end of compressed output
 // ----
 
-void write_code(FILE *f, struct code_list codes, char str[]){
+void write_code(FILE *f, code_list list, char str[]){
 
   //display_codes(codes);
-  fputc(codes.freq_list.size, f);
+  fputc(list->freq_list.size, f);
   int i;
-  for(i=0; i<codes.freq_list.size; i++){
-    fputc( codes.freq_list.arr[i]->ch,f);
-    fwrite(&codes.freq_list.arr[i]->weight, sizeof(int), 1, f);
+  for(i=0; i<list->freq_list.size; i++){
+    fputc( list->freq_list.arr[i]->ch,f);
+    fwrite(&list->freq_list.arr[i]->weight, sizeof(int), 1, f);
   }
   long int len = strlen(str);
   fwrite(&len, sizeof(long int), 1, f);
@@ -208,7 +206,7 @@ void write_code(FILE *f, struct code_list codes, char str[]){
     unsigned char out = (char) 0;
     int j;
     for(j=0; j<8; j++){
-      unsigned char bit = (char)(get_bit(str, &i, &codes, &pos) - 48); 
+      unsigned char bit = (char)(get_bit(str, &i, list, &pos) - 48); 
       if(bit != (char)0 && bit != (char)1){
 	break;
       }
