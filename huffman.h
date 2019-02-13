@@ -30,13 +30,6 @@ typedef struct{
   struct p_list freq_list;
 } *code_list;
 
-// Simple struct to hold the position of
-// last bit read
-struct input_buffer{
-  int pos;
-  unsigned char ch;
-  long int bytes_read;
-};
 
 struct p_list create_nodes(char[]);
 code_list encode(struct p_list);
